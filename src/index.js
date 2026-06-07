@@ -1,16 +1,57 @@
+const readline = require("readline");
+
 const { findSimilarCompanies } =
     require("./services/ocean");
 
 const { findDecisionMakers } =
     require("./services/prospeo");
 
+const { sendEmail } =
+    require("./services/brevo");
+
+require("dotenv").config();
+
+function askDomain() {
+
+    const rl =
+        readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+    return new Promise((resolve) => {
+
+        rl.question(
+            "\nEnter company domain: ",
+            (domain) => {
+
+                rl.close();
+                resolve(domain.trim());
+            }
+        );
+    });
+}
+
 async function main() {
 
+    const inputDomain =
+        await askDomain();
+
+    console.log(
+        `\nSearching similar companies for ${inputDomain}...`
+    );
+
     const oceanData =
-        await findSimilarCompanies("openai.com");
+        await findSimilarCompanies(
+            inputDomain
+        );
 
     if (!oceanData) {
-        console.log("Ocean API failed.");
+
+        console.log(
+            "Ocean API failed."
+        );
+
         return;
     }
 
@@ -18,7 +59,11 @@ async function main() {
         oceanData.companies || [];
 
     if (companies.length === 0) {
-        console.log("No companies found.");
+
+        console.log(
+            "No companies found."
+        );
+
         return;
     }
 
@@ -26,8 +71,9 @@ async function main() {
         "\n=== Similar Companies ==="
     );
 
-    companies.slice(0, 5).forEach(
-        (item, index) => {
+    companies
+        .slice(0, 5)
+        .forEach((item, index) => {
 
             console.log(
                 `${index + 1}. ${
@@ -36,8 +82,7 @@ async function main() {
                     item.company?.domain || "N/A"
                 })`
             );
-        }
-    );
+        });
 
     let leads = null;
     let selectedCompany = null;
@@ -54,18 +99,31 @@ async function main() {
         );
 
         leads =
-            await findDecisionMakers(domain);
+            await findDecisionMakers(
+                domain
+            );
 
-        if (leads && leads.length > 0) {
-            selectedCompany = domain;
+        if (
+            leads &&
+            leads.length > 0
+        ) {
+
+            selectedCompany =
+                domain;
+
             break;
         }
     }
 
-    if (!leads || leads.length === 0) {
+    if (
+        !leads ||
+        leads.length === 0
+    ) {
+
         console.log(
-            "\nNo leads found for any company."
+            "\nNo leads found."
         );
+
         return;
     }
 
@@ -77,29 +135,80 @@ async function main() {
         `Total Leads: ${leads.length}`
     );
 
-    leads.slice(0, 5).forEach(
-        (lead, index) => {
+    const lead =
+        leads[0];
 
-            console.log(
-                `\nLead ${index + 1}`
-            );
-
-            console.log(
-                "Name:",
-                lead.person?.full_name || "N/A"
-            );
-
-            console.log(
-                "Title:",
-                lead.person?.current_job_title || "N/A"
-            );
-
-            console.log(
-                "LinkedIn:",
-                lead.person?.linkedin_url || "N/A"
-            );
-        }
+    console.log(
+        "\nLead Details"
     );
+
+    console.log(
+        "Name:",
+        lead.person?.full_name ||
+        "N/A"
+    );
+
+    console.log(
+        "Title:",
+        lead.person?.current_job_title ||
+        "N/A"
+    );
+
+    console.log(
+        "LinkedIn:",
+        lead.person?.linkedin_url ||
+        "N/A"
+    );
+
+    const result =
+        await sendEmail(
+            process.env.TEST_EMAIL,
+
+            lead.person?.full_name ||
+            "User",
+
+            `Opportunity for ${selectedCompany}`,
+
+            `
+            <h2>Hello ${
+                lead.person?.full_name ||
+                "there"
+            }</h2>
+
+            <p>
+                This email was generated
+                through the automated
+                outreach pipeline.
+            </p>
+
+            <p>
+                Company:
+                ${selectedCompany}
+            </p>
+
+            <p>
+                Job Title:
+                ${
+                    lead.person?.current_job_title ||
+                    "N/A"
+                }
+            </p>
+
+            <p>
+                LinkedIn:
+                ${
+                    lead.person?.linkedin_url ||
+                    "N/A"
+                }
+            </p>
+            `
+        );
+
+    console.log(
+        "\n=== Brevo Result ==="
+    );
+
+    console.log(result);
 }
 
 main();
