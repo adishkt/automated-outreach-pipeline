@@ -6,6 +6,9 @@ const { findSimilarCompanies } =
 const { findDecisionMakers } =
     require("./services/prospeo");
 
+const { enrichPerson } =
+    require("./services/prospeo-enrich");
+
 const { sendEmail } =
     require("./services/brevo");
 
@@ -87,7 +90,6 @@ async function main() {
     const companies =
         (oceanData.companies || []).slice(0, 2);
 
-
     if (companies.length === 0) {
 
         console.log(
@@ -107,9 +109,11 @@ async function main() {
 
             console.log(
                 `${index + 1}. ${
-                    item.company?.name || "N/A"
+                    item.company?.name ||
+                    "N/A"
                 } (${
-                    item.company?.domain || "N/A"
+                    item.company?.domain ||
+                    "N/A"
                 })`
             );
         });
@@ -117,11 +121,11 @@ async function main() {
     let leads = null;
     let selectedCompany = null;
 
-    function sleep(ms) {
-            return new Promise(resolve =>
-                setTimeout(resolve, ms)
-            );
-        }
+   function sleep(ms) {
+        return new Promise(resolve =>
+            setTimeout(resolve, ms)
+        );
+    }
 
     for (const item of companies) {
 
@@ -166,19 +170,11 @@ async function main() {
         return;
     }
 
-    console.log(
-        `\n=== Leads Found for ${selectedCompany} ===`
-    );
-
-    console.log(
-        `Total Leads: ${leads.length}`
-    );
-
     const lead =
         leads[0];
 
     console.log(
-        "\n=== Lead Details ==="
+        "\n=== Lead Found ==="
     );
 
     console.log(
@@ -199,6 +195,61 @@ async function main() {
         "N/A"
     );
 
+    const personId =
+        lead.person?.person_id;
+
+    if (!personId) {
+
+        console.log(
+            "No person_id found."
+        );
+
+        return;
+    }
+
+    console.log(
+        "\nEnriching lead..."
+    );
+
+    const enrichedLead =
+        await enrichPerson(
+            personId
+        );
+
+    if (
+        !enrichedLead ||
+        enrichedLead.error
+    ) {
+
+        console.log(
+            "Enrichment failed."
+        );
+
+        return;
+    }
+
+    const email =
+        enrichedLead.person?.email
+            ?.email;
+
+    if (!email) {
+
+        console.log(
+            "No verified email found."
+        );
+
+        return;
+    }
+
+    console.log(
+        "\n=== Enriched Lead ==="
+    );
+
+    console.log(
+        "Email:",
+        email
+    );
+
     const confirmation =
         await askConfirmation();
 
@@ -217,46 +268,34 @@ async function main() {
 
     const result =
         await sendEmail(
-            process.env.TEST_EMAIL,
+            email,
 
-            lead.person?.full_name ||
-            "User",
+            lead.person?.full_name,
 
             "Quick Collaboration Opportunity",
 
             `
             <h2>Hello ${
-                lead.person?.full_name ||
-                "there"
+                lead.person?.full_name
             },</h2>
 
             <p>
-                I came across your profile while researching companies and noticed your role as
+                I came across your profile while researching companies in your industry and noticed your role as
                 <b>${
-                    lead.person?.current_job_title ||
-                    "Professional"
+                    lead.person?.current_job_title
                 }</b>.
             </p>
 
             <p>
-                This outreach was generated through an automated lead discovery and email automation workflow built using Ocean.io, Prospeo, and Brevo.
+                I'm working on an automated outreach and lead discovery platform and thought there could be an interesting opportunity to connect.
             </p>
 
             <p>
-                <b>Company:</b>
-                ${selectedCompany}
+                If you're open to a brief conversation, I'd be happy to share more details.
             </p>
 
             <p>
-                <b>LinkedIn:</b><br>
-                ${
-                    lead.person?.linkedin_url ||
-                    "N/A"
-                }
-            </p>
-
-            <p>
-                Looking forward to connecting.
+                Looking forward to hearing from you.
             </p>
 
             <br>
@@ -269,22 +308,12 @@ async function main() {
         );
 
     console.log(
-        "\n=== Email Sent Successfully ==="
+        "\n=== Email Sent ==="
     );
 
     console.log(
         "Recipient:",
-        process.env.TEST_EMAIL
-    );
-
-    console.log(
-        "Message ID:",
-        result?.messageId ||
-        "N/A"
-    );
-
-    console.log(
-        "\nFull Response:"
+        email
     );
 
     console.log(result);
