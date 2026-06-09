@@ -169,7 +169,12 @@ async function main() {
 
         return;
     }
+    // leads.forEach(
+    // (lead, index) => {
 
+    //     console.log(
+    //         `\nLead ${index + 1}`
+    //     );
     const lead =
         leads[0];
 
@@ -265,6 +270,15 @@ async function main() {
     console.log(
         "\nSending Email..."
     );
+
+    // for (const lead of leads) {
+
+    // const email =
+    //     lead.person?.email?.email;
+
+    // if (!email) {
+    //     continue;
+    // }
 
     const result =
         await sendEmail(
