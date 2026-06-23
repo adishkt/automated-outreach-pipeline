@@ -177,7 +177,7 @@ async function main() {
     //     );
     const lead =
         leads[0];
-
+// for (const lead of leads) {
     console.log(
         "\n=== Lead Found ==="
     );
@@ -329,7 +329,7 @@ async function main() {
         "Recipient:",
         email
     );
-
+// }
     console.log(result);
 }
 
